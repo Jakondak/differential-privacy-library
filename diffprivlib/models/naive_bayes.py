@@ -74,10 +74,11 @@ class GaussianNB(sk_nb.GaussianNB):
 
     """
 
-    def __init__(self, epsilon=1, bounds=None, priors=None, var_smoothing=1e-9):
+    def __init__(self, epsilon=1, delta=0.0 bounds=None, priors=None, var_smoothing=1e-9):
         super().__init__(priors, var_smoothing)
 
         self.epsilon = epsilon
+        self.delta = delta
         self.bounds = bounds
 
     def _partial_fit(self, X, y, classes=None, _refit=False, sample_weight=None):
@@ -175,6 +176,8 @@ class GaussianNB(sk_nb.GaussianNB):
 
         local_epsilon = self.epsilon / 2
         local_epsilon /= features
+        local_delta = self.delta / 2
+        local_delta /= features
 
         if len(self.bounds) != features:
             raise ValueError("Bounds must be specified for each feature dimension")
@@ -184,9 +187,9 @@ class GaussianNB(sk_nb.GaussianNB):
 
         for feature in range(features):
             local_diameter = self.bounds[feature][1] - self.bounds[feature][0]
-            mech_mu = Laplace().set_sensitivity(local_diameter / n_samples).set_epsilon(local_epsilon)
+            mech_mu = Laplace().set_sensitivity(local_diameter / n_samples).set_epsilon_delta(local_epsilon, local_delta)
             mech_var = LaplaceBoundedDomain().set_sensitivity((n_samples - 1) * local_diameter ** 2 / n_samples ** 2)\
-                .set_epsilon(local_epsilon).set_bounds(0, float("inf"))
+                .set_epsilon_delta(local_epsilon, local_delta).set_bounds(0, float("inf"))
 
             new_mu[feature] = mech_mu.randomise(mean[feature])
             new_var[feature] = mech_var.randomise(var[feature])
