@@ -54,7 +54,7 @@ from diffprivlib.utils import PrivacyLeakWarning
 _range = range
 
 
-def mean(a, epsilon=1.0, range=None, axis=None, dtype=None, out=None, keepdims=np._NoValue):
+def mean(a, epsilon=1.0, delta=0.0, range=None, axis=None, dtype=None, out=None, keepdims=np._NoValue):
     r"""
     Compute the differentially private arithmetic mean along the specified axis.
 
@@ -107,10 +107,10 @@ def mean(a, epsilon=1.0, range=None, axis=None, dtype=None, out=None, keepdims=n
     std, var, nanmean
 
     """
-    return _mean(a, epsilon, range, axis, dtype, out, keepdims, False)
+    return _mean(a, epsilon, delta, range, axis, dtype, out, keepdims, False)
 
 
-def nanmean(a, epsilon=1.0, range=None, axis=None, dtype=None, out=None, keepdims=np._NoValue):
+def nanmean(a, epsilon=1.0, delta=0.0, range=None, axis=None, dtype=None, out=None, keepdims=np._NoValue):
     r"""
     Compute the differentially private arithmetic mean along the specified axis, ignoring NaNs.
 
@@ -165,10 +165,10 @@ def nanmean(a, epsilon=1.0, range=None, axis=None, dtype=None, out=None, keepdim
     std, var, mean
 
     """
-    return _mean(a, epsilon, range, axis, dtype, out, keepdims, True)
+    return _mean(a, epsilon, delta, range, axis, dtype, out, keepdims, True)
 
 
-def _mean(a, epsilon=1.0, range=None, axis=None, dtype=None, out=None, keepdims=np._NoValue, nan=False):
+def _mean(a, epsilon=1.0, delta=0.0, range=None, axis=None, dtype=None, out=None, keepdims=np._NoValue, nan=False):
     if isinstance(axis, tuple):
         temp_axis = axis
     elif axis is not None:
@@ -210,7 +210,7 @@ def _mean(a, epsilon=1.0, range=None, axis=None, dtype=None, out=None, keepdims=
         iterator = np.nditer(actual_mean, flags=['multi_index'])
 
         while not iterator.finished:
-            dp_mech = Laplace().set_epsilon(epsilon).set_sensitivity(ranges[iterator.multi_index] / num_datapoints)
+            dp_mech = Laplace().set_epsilon_delta(epsilon, delta).set_sensitivity(ranges[iterator.multi_index] / num_datapoints)
 
             dp_mean[iterator.multi_index] = dp_mech.randomise(float(iterator[0]))
             iterator.iternext()
@@ -218,12 +218,12 @@ def _mean(a, epsilon=1.0, range=None, axis=None, dtype=None, out=None, keepdims=
         return dp_mean
 
     range = np.ravel(ranges)[0]
-    dp_mech = Laplace().set_epsilon(epsilon).set_sensitivity(range / num_datapoints)
+    dp_mech = Laplace().set_epsilon_delta(epsilon, delta).set_sensitivity(range / num_datapoints)
 
     return dp_mech.randomise(actual_mean)
 
 
-def var(a, epsilon=1.0, range=None, axis=None, dtype=None, out=None, ddof=0, keepdims=np._NoValue):
+def var(a, epsilon=1.0, delta=0.0, range=None, axis=None, dtype=None, out=None, ddof=0, keepdims=np._NoValue):
     r"""
     Compute the differentially private variance along the specified axis.
 
@@ -282,10 +282,10 @@ def var(a, epsilon=1.0, range=None, axis=None, dtype=None, out=None, ddof=0, kee
     std , mean, nanvar
 
     """
-    return _var(a, epsilon, range, axis, dtype, out, ddof, keepdims, False)
+    return _var(a, epsilon, delta, range, axis, dtype, out, ddof, keepdims, False)
 
 
-def nanvar(a, epsilon=1.0, range=None, axis=None, dtype=None, out=None, ddof=0, keepdims=np._NoValue):
+def nanvar(a, epsilon=1.0, delta=0.0, range=None, axis=None, dtype=None, out=None, ddof=0, keepdims=np._NoValue):
     r"""
     Compute the differentially private variance along the specified axis, ignoring NaNs.
 
@@ -346,10 +346,10 @@ def nanvar(a, epsilon=1.0, range=None, axis=None, dtype=None, out=None, ddof=0, 
     std , mean, var
 
     """
-    return _var(a, epsilon, range, axis, dtype, out, ddof, keepdims, True)
+    return _var(a, epsilon, delta, range, axis, dtype, out, ddof, keepdims, True)
 
 
-def _var(a, epsilon=1.0, range=None, axis=None, dtype=None, out=None, ddof=0, keepdims=np._NoValue, nan=False):
+def _var(a, epsilon=1.0, delta=0.0, range=None, axis=None, dtype=None, out=None, ddof=0, keepdims=np._NoValue, nan=False):
     if isinstance(axis, tuple):
         temp_axis = axis
     elif axis is not None:
@@ -391,7 +391,7 @@ def _var(a, epsilon=1.0, range=None, axis=None, dtype=None, out=None, ddof=0, ke
         iterator = np.nditer(actual_var, flags=['multi_index'])
 
         while not iterator.finished:
-            dp_mech = LaplaceBoundedDomain().set_epsilon(epsilon).set_bounds(0, float("inf")) \
+            dp_mech = LaplaceBoundedDomain().set_epsilon_delta(epsilon, delta).set_bounds(0, float("inf")) \
                 .set_sensitivity((ranges[iterator.multi_index] / num_datapoints) ** 2 * (num_datapoints - 1))
 
             dp_var[iterator.multi_index] = dp_mech.randomise(float(iterator[0]))
@@ -400,13 +400,13 @@ def _var(a, epsilon=1.0, range=None, axis=None, dtype=None, out=None, ddof=0, ke
         return dp_var
 
     range = np.ravel(ranges)[0]
-    dp_mech = LaplaceBoundedDomain().set_epsilon(epsilon).set_bounds(0, float("inf")). \
+    dp_mech = LaplaceBoundedDomain().set_epsilon_delta(epsilon, delta).set_bounds(0, float("inf")). \
         set_sensitivity(range ** 2 / num_datapoints)
 
     return dp_mech.randomise(actual_var)
 
 
-def std(a, epsilon=1.0, range=None, axis=None, dtype=None, out=None, ddof=0, keepdims=np._NoValue):
+def std(a, epsilon=1.0, delta=0.0, range=None, axis=None, dtype=None, out=None, ddof=0, keepdims=np._NoValue):
     r"""
     Compute the standard deviation along the specified axis.
 
@@ -465,10 +465,10 @@ def std(a, epsilon=1.0, range=None, axis=None, dtype=None, out=None, ddof=0, kee
     var, mean, nanstd
 
     """
-    return _std(a, epsilon, range, axis, dtype, out, ddof, keepdims, False)
+    return _std(a, epsilon, delta, range, axis, dtype, out, ddof, keepdims, False)
 
 
-def nanstd(a, epsilon=1.0, range=None, axis=None, dtype=None, out=None, ddof=0, keepdims=np._NoValue):
+def nanstd(a, epsilon=1.0, delta=0.0, range=None, axis=None, dtype=None, out=None, ddof=0, keepdims=np._NoValue):
     r"""
     Compute the standard deviation along the specified axis, ignoring NaNs.
 
@@ -529,11 +529,11 @@ def nanstd(a, epsilon=1.0, range=None, axis=None, dtype=None, out=None, ddof=0, 
     var, mean, std
 
     """
-    return _std(a, epsilon, range, axis, dtype, out, ddof, keepdims, True)
+    return _std(a, epsilon, delta,  range, axis, dtype, out, ddof, keepdims, True)
 
 
-def _std(a, epsilon=1.0, range=None, axis=None, dtype=None, out=None, ddof=0, keepdims=np._NoValue, nan=False):
-    ret = _var(a, epsilon=epsilon, range=range, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims, nan=nan)
+def _std(a, epsilon=1.0, delta=0.0, range=None, axis=None, dtype=None, out=None, ddof=0, keepdims=np._NoValue, nan=False):
+    ret = _var(a, epsilon=epsilon, delta=delta range=range, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims, nan=nan)
 
     if isinstance(ret, mu.ndarray):
         ret = um.sqrt(ret, out=ret)
