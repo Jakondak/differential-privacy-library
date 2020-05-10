@@ -67,8 +67,8 @@ class Wishart(DPMechanism):
             If `epsilon` is zero or negative, or if `delta` is non-zero.
 
         """
-        if not delta == 0:
-            raise ValueError("Delta must be zero")
+        #if not delta == 0:
+        #    raise ValueError("Delta must be zero")
 
         return super().set_epsilon_delta(epsilon, delta)
 
