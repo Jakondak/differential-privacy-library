@@ -168,12 +168,13 @@ class LogisticRegression(linear_model.LogisticRegression):
 
     """
 
-    def __init__(self, epsilon=1.0, data_norm=None, tol=1e-4, C=1.0, fit_intercept=True, max_iter=100, verbose=0,
+    def __init__(self, epsilon=1.0, delta=0.0, data_norm=None, tol=1e-4, C=1.0, fit_intercept=True, max_iter=100, verbose=0,
                  warm_start=False, n_jobs=None, **unused_args):
         super().__init__(penalty='l2', dual=False, tol=tol, C=C, fit_intercept=fit_intercept, intercept_scaling=1.0,
                          class_weight=None, random_state=None, solver='lbfgs', max_iter=max_iter, multi_class='ovr',
                          verbose=verbose, warm_start=warm_start, n_jobs=n_jobs)
         self.epsilon = epsilon
+        self.delta = delta
         self.data_norm = data_norm
         self.classes_ = None
 
@@ -261,7 +262,7 @@ class LogisticRegression(linear_model.LogisticRegression):
         path_func = delayed(_logistic_regression_path)
 
         fold_coefs_ = Parallel(n_jobs=self.n_jobs, verbose=self.verbose, **_joblib_parallel_args(prefer='processes'))(
-            path_func(X, y, epsilon=self.epsilon / n_classes, data_norm=self.data_norm, pos_class=class_, Cs=[self.C],
+            path_func(X, y, epsilon=self.epsilon / n_classes, delta=self.delta / n_classes, data_norm=self.data_norm, pos_class=class_, Cs=[self.C],
                       fit_intercept=self.fit_intercept, max_iter=self.max_iter, tol=self.tol, verbose=self.verbose,
                       coef=warm_start_coef_, check_input=False)
             for class_, warm_start_coef_ in zip(classes_, warm_start_coef))
@@ -279,7 +280,7 @@ class LogisticRegression(linear_model.LogisticRegression):
         return self
 
 
-def _logistic_regression_path(X, y, epsilon=1.0, data_norm=1.0, pos_class=None, Cs=10, fit_intercept=True, max_iter=100,
+def _logistic_regression_path(X, y, epsilon=1.0, delta=0.0, data_norm=1.0, pos_class=None, Cs=10, fit_intercept=True, max_iter=100,
                               tol=1e-4, verbose=0, coef=None, check_input=True, **unused_args):
     """Compute a Logistic Regression model with differential privacy for a list of regularization parameters.  Takes
     inspiration from ``_logistic_regression_path`` in scikit-learn, specified to the LBFGS solver and one-vs-rest
@@ -389,7 +390,7 @@ def _logistic_regression_path(X, y, epsilon=1.0, data_norm=1.0, pos_class=None, 
     for i, C in enumerate(Cs):
         vector_mech = Vector() \
             .set_dimension(n_features + int(fit_intercept)) \
-            .set_epsilon(epsilon) \
+            .set_epsilon_delta(epsilon, delta) \
             .set_alpha(1. / C) \
             .set_sensitivity(0.25, data_norm)
         noisy_logistic_loss = vector_mech.randomise(_logistic_loss_and_grad)
