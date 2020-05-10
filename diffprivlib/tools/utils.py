@@ -533,7 +533,7 @@ def nanstd(a, epsilon=1.0, delta=0.0, range=None, axis=None, dtype=None, out=Non
 
 
 def _std(a, epsilon=1.0, delta=0.0, range=None, axis=None, dtype=None, out=None, ddof=0, keepdims=np._NoValue, nan=False):
-    ret = _var(a, epsilon=epsilon, delta=delta range=range, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims, nan=nan)
+    ret = _var(a, epsilon=epsilon, delta=delta, range=range, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims, nan=nan)
 
     if isinstance(ret, mu.ndarray):
         ret = um.sqrt(ret, out=ret)
