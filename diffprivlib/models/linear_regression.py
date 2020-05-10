@@ -58,7 +58,7 @@ _range = range
 
 
 # noinspection PyPep8Naming
-def _preprocess_data(X, y, fit_intercept, epsilon=1.0, range_X=None, range_y=None, copy=True, check_input=True,
+def _preprocess_data(X, y, fit_intercept, epsilon=1.0, delta=0.0, range_X=None, range_y=None, copy=True, check_input=True,
                      **unused_args):
     warn_unused_args(unused_args)
 
@@ -71,9 +71,9 @@ def _preprocess_data(X, y, fit_intercept, epsilon=1.0, range_X=None, range_y=Non
     X_scale = np.ones(X.shape[1], dtype=X.dtype)
 
     if fit_intercept:
-        X_offset = mean(X, axis=0, range=range_X, epsilon=epsilon)
+        X_offset = mean(X, axis=0, range=range_X, epsilon=epsilon, delta=delta)
         X -= X_offset
-        y_offset = mean(y, axis=0, range=range_y, epsilon=epsilon)
+        y_offset = mean(y, axis=0, range=range_y, epsilon=epsilon, delta=delta)
         y = y - y_offset
     else:
         X_offset = np.zeros(X.shape[1], dtype=X.dtype)
@@ -153,11 +153,12 @@ class LinearRegression(sk_lr.LinearRegression):
         component analysis." In 2016 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP),
         pp. 2339-2343. IEEE, 2016.
     """
-    def __init__(self, epsilon=1.0, data_norm=None, range_X=None, range_y=None, fit_intercept=True, copy_X=True,
+    def __init__(self, epsilon=1.0, delta=0.0, data_norm=None, range_X=None, range_y=None, fit_intercept=True, copy_X=True,
                  **unused_args):
         super().__init__(fit_intercept=fit_intercept, normalize=False, copy_X=copy_X, n_jobs=None)
 
         self.epsilon = epsilon
+        self.delta = delta
         self.data_norm = data_norm
         self.range_X = range_X
         self.range_y = range_y
@@ -217,16 +218,18 @@ class LinearRegression(sk_lr.LinearRegression):
 
         n_features = X.shape[1]
         epsilon_intercept_scale = 1 / (n_features + 1) if self.fit_intercept else 0
+        delta_intercept_scale = 1 / (n_features + 1) if self.fit_intercept else 0
 
         X, y, X_offset, y_offset, X_scale = self._preprocess_data(X, y, fit_intercept=self.fit_intercept,
                                                                   range_X=self.range_X, range_y=self.range_y,
                                                                   epsilon=self.epsilon * epsilon_intercept_scale,
+                                                                  delta=self.delta * delta_intercept_scale,
                                                                   copy=self.copy_X)
 
         A = np.hstack((X, y[:, np.newaxis] if y.ndim == 1 else y))
         AtA = np.dot(A.T, A)
 
-        mech = Wishart().set_epsilon(self.epsilon * (1 - epsilon_intercept_scale)).set_sensitivity(self.data_norm)
+        mech = Wishart().set_epsilon_delta(self.epsilon * (1 - epsilon_intercept_scale), self.delta * (1 -                delta_intercept_scale)).set_sensitivity(self.data_norm)
         noisy_AtA = mech.randomise(AtA)
 
         noisy_AtA = noisy_AtA[:n_features, :]
